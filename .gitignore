@@ -35,6 +35,12 @@ TestResult.xml
 launchSettings.json
 *.recipe
 
+# Ignore IDE settings
+.idea/
+*.sln
+*.csproj
+*.user
+
 bin/
 obj/
 .vscode/
