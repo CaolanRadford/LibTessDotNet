@@ -1,3 +1,5 @@
+Foked this to add a package manifest for unity so I can easily manage this library as a Unity package in the package manager.
+
 LibTessDotNet [![Build Status](https://ci.appveyor.com/api/projects/status/ypuw4wca67vr5k8u?svg=true)](https://ci.appveyor.com/project/speps/libtessdotnet)
 =============
 
