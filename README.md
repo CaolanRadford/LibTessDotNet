@@ -1,139 +1,105 @@
-Foked this to add a package manifest for unity so I can easily manage this library as a Unity package in the package manager.
-
-LibTessDotNet [![Build Status](https://ci.appveyor.com/api/projects/status/ypuw4wca67vr5k8u?svg=true)](https://ci.appveyor.com/project/speps/libtessdotnet)
-=============
+LibTessDotNet for Unity [![Build Status](https://ci.appveyor.com/api/projects/status/ypuw4wca67vr5k8u?svg=true)](https://ci.appveyor.com/project/speps/libtessdotnet)
+================================================================
 
 ### Goal
-
-Provide a robust and fast tessellator (polygons with N vertices in the output) for .NET, also does triangulation.
+Provide a robust and fast tessellator (polygons with N vertices in the output) for Unity, also performing triangulation.
 
 ### Requirements
-
 * .NET Standard 2.0 (see [here](https://docs.microsoft.com/en-us/dotnet/standard/net-standard) for more information)
+* Unity version 2019.1 or higher
 
 ### Features
-
 * Tessellate arbitrary complex polygons
     - self-intersecting (see "star-intersect" sample)
     - with coincident vertices (see "clipper" sample)
-    - advanced winding rules : even/odd, non zero, positive, negative, |winding| >= 2 (see "redbook-winding" sample)
+    - advanced winding rules: even/odd, non zero, positive, negative, |winding| >= 2 (see "redbook-winding" sample)
 * Custom input
-    - Custom vertex attributes (eg. UV coordinates) with merging callback
-    - Force orientation of input contour (clockwise/counterclockwise, eg. for GIS systems, see "force-winding" sample)
+    - Custom vertex attributes (e.g., UV coordinates) with merging callback
+    - Force orientation of input contour (clockwise/counterclockwise, e.g., for GIS systems, see "force-winding" sample)
 * Choice of output
     - polygons with N vertices (with N >= 3)
-    - connected polygons (didn't quite tried this yet, but should work)
+    - connected polygons (should work, though not extensively tested)
     - boundary only (to have a basic union of two contours)
 * Handles polygons computed with [Clipper](http://www.angusj.com/delphi/clipper.php) - an open source freeware polygon clipping library
 * Single/Double precision support
 
-### Screenshot
+### Unity Integration Changes
+This fork adds a **Unity Package Manifest** (`package.json`) to easily manage this library via the Unity **Package Manager**. By integrating **LibTessDotNet** as a Unity package, the library can be easily pulled into any Unity project and updated alongside other packages. It also includes all necessary **Unity `.meta` files** for seamless integration.
 
-![Redbook winding example](https://raw.github.com/speps/LibTessDotNet/master/TessBed/Misc/screenshot.png)
+In addition to adding Unity-specific features, a significant amount of legacy content and files that are not required for Unity integration have been removed to streamline the package:
+* Deleted **Build** folder: contained scripts and executables related to building the library outside of Unity, such as `BuildPackage.bat`, `PackageNuGet.bat`, etc.
+* Removed **TessBed** and **TessExample** directories: these contained Windows Forms applications and benchmarking examples that are not relevant to Unity.
+* Removed **.sln** and **.csproj** files: Unity does not use these for compilation, so they were unnecessary.
+* Deleted **AppVeyor** configuration (`appveyor.yml`): not needed for Unity development.
 
-### Comparison
 
-![Benchmarks](https://raw.github.com/speps/LibTessDotNet/master/TessBed/Misc/benchmarks.png)
 
 ### Build
+Since this package is tailored for Unity, you can add it directly to your project via **Unity Package Manager** or manually copy the source files into your **Assets** folder.
 
-```
-dotnet build
+To add via Unity Package Manager, add the following dependency to your project's `manifest.json` file:
+```json
+"com.caolanradford.libtessdotnet": "https://github.com/caolanradford/LibTessDotNet.git"
 ```
 
 ### Example
-
-From [TessExample/Program.cs](https://github.com/speps/LibTessDotNet/blob/master/TessExample/Program.cs)
+Here is an example script that demonstrates how to use LibTessDotNet within Unity. The example uses **LibTessDotNet** to tessellate a star-shaped polygon:
 
 ```csharp
 using LibTessDotNet;
-using System;
-using System.Drawing;
+using UnityEngine;
 
-namespace TessExample
+public class TessellatorExample : MonoBehaviour
 {
-    class Program
+    void Start()
     {
-        // The data array contains 4 values, it's the associated data of the vertices that resulted in an intersection.
-        private static object VertexCombine(LibTessDotNet.Vec3 position, object[] data, float[] weights)
+        // Example input data in the form of a star that intersects itself.
+        var inputData = new float[] { 0.0f, 3.0f, -1.0f, 0.0f, 1.6f, 1.9f, -1.6f, 1.9f, 1.0f, 0.0f };
+
+        // Create an instance of the tessellator. Can be reused.
+        var tess = new LibTessDotNet.Tess();
+
+        // Construct the contour from inputData.
+        int numPoints = inputData.Length / 2;
+        var contour = new LibTessDotNet.ContourVertex[numPoints];
+        for (int i = 0; i < numPoints; i++)
         {
-            // Fetch the vertex data.
-            var colors = new Color[] { (Color)data[0], (Color)data[1], (Color)data[2], (Color)data[3] };
-            // Interpolate with the 4 weights.
-            var rgba = new float[] {
-                (float)colors[0].R * weights[0] + (float)colors[1].R * weights[1] + (float)colors[2].R * weights[2] + (float)colors[3].R * weights[3],
-                (float)colors[0].G * weights[0] + (float)colors[1].G * weights[1] + (float)colors[2].G * weights[2] + (float)colors[3].G * weights[3],
-                (float)colors[0].B * weights[0] + (float)colors[1].B * weights[1] + (float)colors[2].B * weights[2] + (float)colors[3].B * weights[3],
-                (float)colors[0].A * weights[0] + (float)colors[1].A * weights[1] + (float)colors[2].A * weights[2] + (float)colors[3].A * weights[3]
-            };
-            // Return interpolated data for the new vertex.
-            return Color.FromArgb((int)rgba[3], (int)rgba[0], (int)rgba[1], (int)rgba[2]);
+            contour[i].Position = new LibTessDotNet.Vec3(inputData[i * 2], inputData[i * 2 + 1], 0);
         }
+        tess.AddContour(contour, LibTessDotNet.ContourOrientation.Clockwise);
 
-        static void Main(string[] args)
+        // Tessellate using the EvenOdd winding rule, requesting triangles as output.
+        tess.Tessellate(LibTessDotNet.WindingRule.EvenOdd, LibTessDotNet.ElementType.Polygons, 3);
+
+        // Output the generated triangles to the console.
+        Debug.Log("Output triangles:");
+        int numTriangles = tess.ElementCount;
+        for (int i = 0; i < numTriangles; i++)
         {
-            // Example input data in the form of a star that intersects itself.
-            var inputData = new float[] { 0.0f, 3.0f, -1.0f, 0.0f, 1.6f, 1.9f, -1.6f, 1.9f, 1.0f, 0.0f };
-
-            // Create an instance of the tessellator. Can be reused.
-            var tess = new LibTessDotNet.Tess();
-
-            // Construct the contour from inputData.
-            // A polygon can be composed of multiple contours which are all tessellated at the same time.
-            int numPoints = inputData.Length / 2;
-            var contour = new LibTessDotNet.ContourVertex[numPoints];
-            for (int i = 0; i < numPoints; i++)
-            {
-                // NOTE : Z is here for convenience if you want to keep a 3D vertex position throughout the tessellation process but only X and Y are important.
-                contour[i].Position = new LibTessDotNet.Vec3(inputData[i * 2], inputData[i * 2 + 1], 0);
-                // Data can contain any per-vertex data, here a constant color.
-                contour[i].Data = Color.Azure;
-            }
-            // Add the contour with a specific orientation, use "Original" if you want to keep the input orientation.
-            tess.AddContour(contour, LibTessDotNet.ContourOrientation.Clockwise);
-
-            // Tessellate!
-            // The winding rule determines how the different contours are combined together.
-            // See http://www.glprogramming.com/red/chapter11.html (section "Winding Numbers and Winding Rules") for more information.
-            // If you want triangles as output, you need to use "Polygons" type as output and 3 vertices per polygon.
-            tess.Tessellate(LibTessDotNet.WindingRule.EvenOdd, LibTessDotNet.ElementType.Polygons, 3, VertexCombine);
-
-            // Same call but the last callback is optional. Data will be null because no interpolated data would have been generated.
-            //tess.Tessellate(LibTessDotNet.WindingRule.EvenOdd, LibTessDotNet.ElementType.Polygons, 3); // Some vertices will have null Data in this case.
-
-            Console.WriteLine("Output triangles:");
-            int numTriangles = tess.ElementCount;
-            for (int i = 0; i < numTriangles; i++)
-            {
-                var v0 = tess.Vertices[tess.Elements[i * 3]].Position;
-                var v1 = tess.Vertices[tess.Elements[i * 3 + 1]].Position;
-                var v2 = tess.Vertices[tess.Elements[i * 3 + 2]].Position;
-                Console.WriteLine("#{0} ({1:F1},{2:F1}) ({3:F1},{4:F1}) ({5:F1},{6:F1})", i, v0.X, v0.Y, v1.X, v1.Y, v2.X, v2.Y);
-            }
-            Console.ReadLine();
+            var v0 = tess.Vertices[tess.Elements[i * 3]].Position;
+            var v1 = tess.Vertices[tess.Elements[i * 3 + 1]].Position;
+            var v2 = tess.Vertices[tess.Elements[i * 3 + 2]].Position;
+            Debug.LogFormat("#{0} ({1:F1},{2:F1}) ({3:F1},{4:F1}) ({5:F1},{6:F1})", i, v0.X, v0.Y, v1.X, v1.Y, v2.X, v2.Y);
         }
     }
 }
 ```
 
 ### Notes
-
-* When using `ElementType.BoundaryContours`, `Tess.Elements` will contain a list of ranges `[startVertexIndex, vertexCount]`.
-  Those ranges are to used with `Tess.Vertices`.
+* When using `ElementType.BoundaryContours`, `Tess.Elements` will contain a list of ranges `[startVertexIndex, vertexCount]`. Those ranges are to be used with `Tess.Vertices`.
 
 ### TODO
-
-* No allocations with the same input twice, all coming from pool
-* Any suggestions are welcome ;)
+* Implement pooling to reduce allocations when processing the same input repeatedly.
+* Suggestions are always welcome! Feel free to open an issue or submit a pull request.
 
 ### License
-
-SGI FREE SOFTWARE LICENSE B (Version 2.0, Sept. 18, 2008)
-More information in LICENSE.txt.
+**LibTessDotNet** is licensed under **SGI FREE SOFTWARE LICENSE B** (Version 2.0, Sept. 18, 2008). More information can be found in `LICENSE.txt`.
 
 ### Links
 * [Reference implementation](http://oss.sgi.com/projects/ogl-sample) - the original SGI reference implementation
-* [libtess2](https://github.com/memononen/libtess2) - Mikko Mononen cleaned up the original GLU tesselator
+* [libtess2](https://github.com/memononen/libtess2) - Mikko Mononen cleaned up the original GLU tessellator
 * [Poly2Tri](http://code.google.com/p/poly2tri/) - another triangulation library for .NET (other ports also available)
-    - Does not support polygons from Clipper, more specifically vertices with same coordinates (coincident)
+    - Does not support polygons from Clipper, more specifically vertices with the same coordinates (coincident)
 * [Clipper](http://www.angusj.com/delphi/clipper.php) - an open source freeware polygon clipping library
+### Acknowledgment
+This package is based on the original [LibTessDotNet](https://github.com/speps/LibTessDotNet) by speps.
