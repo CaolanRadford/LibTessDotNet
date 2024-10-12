@@ -1,0 +1,16 @@
+{
+  "name": "com.yourusername.libtessdotnet",
+  "version": "1.0.0",
+  "displayName": "LibTessDotNet",
+  "description": "C# port of the famous GLU Tessellator, adapted for Unity.",
+  "unity": "2019.1",
+  "author": {
+    "name": "Caolan Radford",
+    "email": "null",
+    "url": "https://github.com/yourusername/LibTessDotNet"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/LibTessDotNet.git"
+  }
+}
